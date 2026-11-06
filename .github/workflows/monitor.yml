@@ -1,0 +1,41 @@
+name: Monitor Allegro RAM
+
+on:
+  schedule:
+    # Uruchamiaj co 5 minut między 6:00 a 22:59 UTC (czyli ok. 7:00/8:00 do 23:00/24:00 w Polsce)
+    - cron: '*/5 6-22 * * *'
+  # Pozwala na ręczne kliknięcie "Run workflow" w zakładce Actions do testu
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-offers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pobierz kod repozytorium
+        uses: actions/checkout@v4
+
+      - name: Konfiguracja Pythona
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalacja bibliotek
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Uruchom skrypt bota
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python bot.py
+
+      - name: Zapisz stan widzianych ofert w repozytorium
+        run: |
+          git config user.name "allegro-bot"
+          git config user.email "bot@github.actions"
+          git add seen_offers.json || true
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Aktualizacja seen_offers.json [skip ci]" && git push)
